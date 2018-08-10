@@ -1,0 +1,46 @@
+#include "DHT.h"
+
+#define DHTPIN 2     // what digital pin we're connected to
+
+// Uncomment whatever type you're using!
+// #define DHTTYPE DHT11   // DHT 11
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+//#define DHTTYPE DHT21   // DHT 21 (AM2301)
+
+// Connect pin 1 (on the left) of the sensor to +5V
+// NOTE: If using a board with 3.3V logic like an Arduino Due connect pin 1
+// to 3.3V instead of 5V!
+// Connect pin 2 of the sensor to whatever your DHTPIN is
+// Connect pin 4 (on the right) of the sensor to GROUND
+// Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
+
+DHT dht(DHTPIN, DHTTYPE);
+
+typedef struct {
+  float temperature;
+  float humidity;
+}dhtSensor_t;
+
+void initDHT(){
+  // Initialize DHT sensor.
+  // Note that older versions of this library took an optional third parameter to
+  // tweak the timings for faster processors.  This parameter is no longer needed
+  // as the current DHT reading algorithm adjusts itself to work on faster procs.
+  dht.begin();
+  Serial.println("DHT sensor initialized");
+}
+
+int readDHT(dhtSensor_t * sensor) {
+  
+  // Reading temperature or humidity takes about 250 milliseconds!
+  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+  sensor->humidity = dht.readHumidity();
+  sensor->temperature = dht.readTemperature(true); // true for fahrenheit
+  
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(sensor->humidity) || isnan(sensor->temperature)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return 1;
+  }
+  return 0; // All good
+}
