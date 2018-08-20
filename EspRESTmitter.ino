@@ -11,31 +11,30 @@
 #define PST_OFFSET -25200l
 
 ESP8266WiFiMulti WiFiMulti;
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, PST_OFFSET);
+char macAddr[18];
 
 void initEspRestmitter() {
 
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(M_SSID, M_PASS);
 
-  timeClient.begin();
-
   Serial.println("ESPRESTmitter initalized");
+  
+  Serial.print("MAC Address: ");
+  Serial.println(WiFi.macAddress());
+  
+  strcpy(macAddr, WiFi.macAddress().c_str());
 }
 
 int espPost(float temp, float humidity) {
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
 
-    timeClient.update();
     // Format the data buffer
     char * dataBuf = (char *) malloc(sizeof(char) * 64); // malloc 64 bytes for temp & humidity
-    String currTime = timeClient.getFormattedTime();
-    int strLen = currTime.length() + 1;
-    char timeArray[strLen];
-    currTime.toCharArray(timeArray, strLen);
-    sprintf(dataBuf, "temp=%0.2f&humidity=%0.2f&time=%s", temp, humidity, timeArray);
+    
+    //sprintf(dataBuf, "temp=%0.2f&humidity=%0.2f&time=%s", temp, humidity, timeArray); // OLD STUFF
+    sprintf(dataBuf, "sensor,deviceid=%s temperature=%0.2f,humidity=%0.2f", macAddr, temp, humidity);
 
     HTTPClient http;
 
