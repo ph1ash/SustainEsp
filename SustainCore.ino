@@ -1,4 +1,3 @@
-
 #ifdef __arm__
 // should use uinstd.h to define sbrk but Due causes a conflict
 extern "C" char* sbrk(int incr);
@@ -6,9 +5,12 @@ extern "C" char* sbrk(int incr);
 extern char *__brkval;
 #endif  // __arm__
 
-#include "DHT.h"
-
 #define MINUTES(x) (x*60e3)
+
+typedef struct {
+  float temperature;
+  float humidity;
+}dhtSensor_t;
 
 dhtSensor_t sensor;
 
@@ -31,8 +33,11 @@ void loop() {
     return;  
   }
 
-  result = espPost(sensor.temperature, sensor.humidity);
-  // WiFi isn't connected, retry
+  //result = espPost(sensor.temperature, sensor.humidity);
+  result = espDynamicPost("temperature", sensor.temperature);
+  result = result & espDynamicPost("humidity", sensor.humidity);
+
+  // Wasn't able to post something, retry
   if (result) {
     delay(500);
     return;

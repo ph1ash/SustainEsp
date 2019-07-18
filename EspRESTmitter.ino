@@ -4,7 +4,7 @@
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiUdp.h>
-#include <PhlashCredentials.h> // Custom Credentials Header
+#include "PhlashCredentials.h" // Custom Credentials Header
 
 #define USE_SERIAL Serial
 
@@ -38,7 +38,7 @@ int espPost(float temp, float humidity) {
 
     HTTPClient http;
 
-    USE_SERIAL.print("[HTTP] begin...\n");
+    Serial.print("[HTTP] begin...\n");
     // configure traged server and url
     http.begin(M_SERVER_URL, M_HTTPS_FPRINT); //HTTPS (Server URL + HTTPS Cert Fingerprint
     // http.begin("http://test.com"); //HTTP
@@ -72,3 +72,46 @@ int espPost(float temp, float humidity) {
   return 1;
 }
 
+int espDynamicPost(char* endPoint, float sensorValue)
+{
+  // wait for WiFi connection
+  if ((WiFiMulti.run() == WL_CONNECTED)) {
+    
+    HTTPClient http;
+
+    Serial.print("[HTTP] begin...\n");
+
+    char * dataBuf = (char *)malloc(sizeof(char)*256);
+    
+    sprintf(dataBuf, "%s/api/%s?appId=%s&value=%0.2f", M_SERVER_URL, endPoint, M_DEVICE_KEY, sensorValue);
+
+    Serial.println(dataBuf);
+    
+    // configure traged server and url
+    http.begin(dataBuf, M_HTTPS_FPRINT); //HTTPS (Server URL + HTTPS Cert Fingerprint)
+
+    int httpCode = http.POST("");
+
+    // httpCode will be negative on error
+    if (httpCode > 0) {
+      // HTTP header has been send and Server response header has been handled
+      Serial.printf("[HTTP] POST... code: %d\n", httpCode);
+
+      // Check if server liked what we did
+      if (httpCode == HTTP_CODE_OK) {
+        String payload = http.getString();
+        Serial.println(payload);
+      }
+    } else {
+      Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+    }
+
+    http.end();
+    return 0;
+  }
+  else
+  {
+    Serial.println("WiFi not connected...");
+  }
+  return 1;
+}
