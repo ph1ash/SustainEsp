@@ -12,7 +12,15 @@ typedef struct {
   float humidity;
 }dhtSensor_t;
 
-dhtSensor_t sensor;
+typedef struct {
+  float eco2;
+  float tvoc;
+}ccs811Sensor_t;
+
+
+dhtSensor_t dhtSensor;
+ccs811Sensor_t gasSensor;
+
 
 void setup() {
   Serial.begin(115200);
@@ -20,22 +28,29 @@ void setup() {
 
   initEspRestmitter();
   initDHT();
+  initCCS811();
   
   //ESP.deepSleep(10e6);
 }
 
 void loop() {
   
-  uint8_t result = readDHT(&sensor);
+  uint8_t result = readDHT(&dhtSensor);
+  pollCCS811(&gasSensor);
   // Check to see if it failed to read, if it did, cancel the loop 
   if (result) {
     delay(500);
     return;  
   }
 
-  //result = espPost(sensor.temperature, sensor.humidity);
-  result = espDynamicPost("temperature", sensor.temperature);
-  result = result & espDynamicPost("humidity", sensor.humidity);
+  //result = espPost(sensor.temperature, dhtSensor.humidity);
+  result = espDynamicPost("temperature", dhtSensor.temperature);
+  result = result & espDynamicPost("humidity", dhtSensor.humidity);
+  if ((gasSensor.eco2 > 0.0) || (gasSensor.tvoc > 0.0))
+  {
+    result = result & espDynamicPost("eco2", gasSensor.eco2);
+    result = result & espDynamicPost("tvoc", gasSensor.tvoc);  
+  }
 
   // Wasn't able to post something, retry
   if (result) {
