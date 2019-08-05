@@ -3,7 +3,7 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiUdp.h>
+#include <WiFiClientSecureBearSSL.h>
 #include "PhlashCredentials.h" // Custom Credentials Header
 
 #define USE_SERIAL Serial
@@ -26,59 +26,17 @@ void initEspRestmitter() {
   strcpy(macAddr, WiFi.macAddress().c_str());
 }
 
-int espPost(float temp, float humidity) {
-  // wait for WiFi connection
-  if ((WiFiMulti.run() == WL_CONNECTED)) {
-
-    // Format the data buffer
-    char * dataBuf = (char *) malloc(sizeof(char) * 64); // malloc 64 bytes for temp & humidity
-    
-    //sprintf(dataBuf, "temp=%0.2f&humidity=%0.2f&time=%s", temp, humidity, timeArray); // OLD STUFF
-    sprintf(dataBuf, "sensor,deviceid=%s temperature=%0.2f,humidity=%0.2f", macAddr, temp, humidity);
-
-    HTTPClient http;
-
-    Serial.print("[HTTP] begin...\n");
-    // configure traged server and url
-    http.begin(M_SERVER_URL, M_HTTPS_FPRINT); //HTTPS (Server URL + HTTPS Cert Fingerprint
-    // http.begin("http://test.com"); //HTTP
-
-    // start connection and send HTTP header
-    Serial.println(dataBuf);
-    int httpCode = http.POST(dataBuf);
-    free(dataBuf);
-
-    // httpCode will be negative on error
-    if (httpCode > 0) {
-      // HTTP header has been send and Server response header has been handled
-      USE_SERIAL.printf("[HTTP] POST... code: %d\n", httpCode);
-
-      // file found at server
-      if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
-        USE_SERIAL.println(payload);
-      }
-    } else {
-      USE_SERIAL.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
-    }
-
-    http.end();
-    return 0;
-  }
-  else
-  {
-    Serial.println("WiFi not connected...");
-  }
-  return 1;
-}
-
 int espDynamicPost(char* endPoint, float sensorValue)
 {
   // wait for WiFi connection
   if ((WiFiMulti.run() == WL_CONNECTED)) {
     
-    HTTPClient http;
-
+    std::unique_ptr<BearSSL::WiFiClientSecure>client(new BearSSL::WiFiClientSecure);
+    
+    client->setFingerprint(M_FPRINT);
+  
+    HTTPClient https;
+  
     Serial.print("[HTTP] begin...\n");
 
     char * dataBuf = (char *)malloc(sizeof(char)*256);
@@ -88,9 +46,9 @@ int espDynamicPost(char* endPoint, float sensorValue)
     Serial.println(dataBuf);
     
     // configure traged server and url
-    http.begin(dataBuf, M_HTTPS_FPRINT); //HTTPS (Server URL + HTTPS Cert Fingerprint)
-
-    int httpCode = http.POST("");
+    https.begin(*client, dataBuf); //HTTPS (Server URL + HTTPS Cert Fingerprint
+    
+    int httpCode = https.POST("");
 
     // httpCode will be negative on error
     if (httpCode > 0) {
@@ -99,14 +57,15 @@ int espDynamicPost(char* endPoint, float sensorValue)
 
       // Check if server liked what we did
       if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
+        String payload = https.getString();
         Serial.println(payload);
       }
     } else {
-      Serial.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
+      Serial.printf("[HTTP] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
     }
-
-    http.end();
+    
+    free(dataBuf);
+    https.end();
     return 0;
   }
   else
