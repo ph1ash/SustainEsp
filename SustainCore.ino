@@ -25,8 +25,8 @@ ccs811Sensor_t gasSensor;
 void setup() {
   Serial.begin(115200);
   Serial.println("Sustain core spinning up...");
-
-  initEspRestmitter();
+  
+  initMqttClient();
   initDHT();
   initCCS811();
   
@@ -34,22 +34,29 @@ void setup() {
 }
 
 void loop() {
-  
+
+  mqttPoll();
+
   uint8_t result = readDHT(&dhtSensor);
   pollCCS811(&gasSensor);
-  // Check to see if it failed to read, if it did, cancel the loop 
+  
+  // Check to see if it failed to read, if it did, restart the loop 
   if (result) {
     delay(500);
     return;  
   }
-
-  //result = espPost(sensor.temperature, dhtSensor.humidity);
-  result = espDynamicPost("temperature", dhtSensor.temperature);
-  result = result & espDynamicPost("humidity", dhtSensor.humidity);
+  
+  mqttSetTopic("environment/temperature");
+  mqttSendMsg(dhtSensor.temperature);
+  mqttSetTopic("environment/humidity");
+  mqttSendMsg(dhtSensor.humidity);
+  
   if ((gasSensor.eco2 > 0.0) || (gasSensor.tvoc > 0.0))
   {
-    result = result & espDynamicPost("eco2", gasSensor.eco2);
-    result = result & espDynamicPost("tvoc", gasSensor.tvoc);  
+    mqttSetTopic("environment/eco2");
+    mqttSendMsg(gasSensor.eco2);
+    mqttSetTopic("environment/tvoc");
+    mqttSendMsg(gasSensor.tvoc);
   }
 
   // Wasn't able to post something, retry
@@ -60,16 +67,5 @@ void loop() {
   
   // Wait a few seconds between measurements.
   Serial.println("Deep sleeping...");
-  delay(MINUTES(3));
-}
-
-int freeMemory() {
-  char top;
-#ifdef __arm__
-  return &top - reinterpret_cast<char*>(sbrk(0));
-#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
-  return &top - __brkval;
-#else  // __arm__
-  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
-#endif  // __arm__
+  delay(MINUTES(1));
 }
