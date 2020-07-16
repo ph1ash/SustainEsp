@@ -31,6 +31,9 @@ void initMqttClient() {
       Serial.print("MQTT connection failed! Error code = ");
       Serial.println(mqttClient.connectError());
   }
+  mqttClient.setKeepAliveInterval(MINUTES(5));
+
+  
   Serial.println("Connected to the MQTT broker");
 }
 
