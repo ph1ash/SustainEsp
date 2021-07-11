@@ -7,20 +7,56 @@
 
 CCS811 mySensor(CCS811_ADDR);
 
+/*using CCS811;
+using CCS811Core;*/
+
+void reinitCCS811()
+{
+  if (mySensor.begin() == false)
+  {
+    Serial.println(".begin() returned with an error.");
+    while(1);
+  }
+}
+
+void setCCS811Env(float temp, float humidity)
+{
+  CCS811Core::CCS811_Status_e res = mySensor.setEnvironmentalData(humidity, temp);
+}
+
 void initCCS811()
 {
   Serial.println("CCS811 Initializing");
 
   Wire.begin(); //Inialize I2C Harware
 
-  //It is recommended to check return status on .begin(), but it is not
-  //required.
-  CCS811Core::status returnCode = mySensor.begin();
-  if (returnCode != CCS811Core::SENSOR_SUCCESS)
+  if (mySensor.begin() == false)
   {
     Serial.println(".begin() returned with an error.");
-    while (1); //Hang if there was a problem.
+    while(1);
   }
+}
+
+bool handleCCS811Status(int stat)
+{
+  switch (stat){
+      case CCS811Core::CCS811_Stat_ID_ERROR:
+        Serial.println("Error on CCS811 read: ID_ERROR");
+        return false; 
+      case CCS811Core::CCS811_Stat_I2C_ERROR:
+        Serial.println("Error on CCS811 read: I2C_ERROR");
+        return false; 
+      case CCS811Core::CCS811_Stat_INTERNAL_ERROR:
+        Serial.println("Error on CCS811 read: INTERAL_ERROR");
+        return false; 
+      case CCS811Core::CCS811_Stat_GENERIC_ERROR:
+        Serial.println("Error on CCS811 read: GENERIC_ERROR");
+        return false; 
+      case CCS811Core::CCS811_Stat_NUM:
+      case CCS811Core::CCS811_Stat_SUCCESS:
+      default:
+        return true;
+    }
 }
 
 void pollCCS811(ccs811Sensor_t * sensor)
@@ -30,9 +66,17 @@ void pollCCS811(ccs811Sensor_t * sensor)
   {
     //If so, have the sensor read and calculate the results.
     //Get them later
-    mySensor.readAlgorithmResults();
+    CCS811Core::CCS811_Status_e mySensorStatus = mySensor.readAlgorithmResults();
 
-    sensor->eco2 = mySensor.getCO2();
-    sensor->tvoc = mySensor.getTVOC();
+    if (handleCCS811Status(mySensorStatus)) 
+    {
+      sensor->eco2 = mySensor.getCO2();
+      sensor->tvoc = mySensor.getTVOC();
+    }
+  }
+  else
+  {
+    sensor->eco2 = -1;
+    sensor->tvoc = -1;
   }
 }

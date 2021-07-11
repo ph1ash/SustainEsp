@@ -13,7 +13,7 @@ const char broker[] = M_SERVER_URL;
 int        port     = M_SERVER_PORT;
 char       topic[100];
 
-void initMqttClient() {
+void connectToWifi() {
   WiFi.mode(WIFI_STA);
   WiFiMulti.addAP(M_SSID, M_PASS);
   
@@ -26,19 +26,29 @@ void initMqttClient() {
     Serial.println("WiFi not connected...");
     delay(500);
   }
-  
+}
+
+void initMqttClient() {
+  mqttClient.setKeepAliveInterval(MINUTES(5));
   if (!mqttClient.connect(broker, port)) {
       Serial.print("MQTT connection failed! Error code = ");
       Serial.println(mqttClient.connectError());
   }
-  mqttClient.setKeepAliveInterval(MINUTES(5));
 
-  
   Serial.println("Connected to the MQTT broker");
+}
+
+void reconnectMqttClient() {
+  mqttClient.stop();
+  initMqttClient();
 }
 
 void mqttPoll() {
   mqttClient.poll();
+}
+
+bool mqttIsConnected() {
+  return mqttClient.connected();
 }
 
 void mqttSendMsg(float data) {
