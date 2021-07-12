@@ -6,6 +6,7 @@ extern char *__brkval;
 #endif  // __arm__
 
 #define MINUTES(x) (x*60e3)
+//#define TEST_SENSORS
 
 typedef struct {
   float temperature;
@@ -57,7 +58,8 @@ void loop() {
     delay(500);
     return;
   }
-  
+
+#ifndef TEST_SENSORS
   mqttSetTopic("environment/temperature");
   mqttSendMsg(dhtSensor.temperature);
   mqttSetTopic("environment/humidity");
@@ -89,4 +91,5 @@ void loop() {
   // Wait a few seconds between measurements.
   Serial.println("Deep sleeping...");
   delay(MINUTES(1));
+#endif
 }
